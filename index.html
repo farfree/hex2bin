@@ -24,7 +24,7 @@
             margin: 0;
             padding: 20px;
             font-size: 14px;
-            overflow: hidden; /* 防止整個頁面捲動 */
+            overflow: hidden;
         }
 
         h2, h3 { border-bottom: 1px solid var(--border-color); padding-bottom: 8px; margin-top: 0; font-size: 1.1em; }
@@ -32,7 +32,8 @@
         .container {
             display: grid;
             gap: 20px;
-            grid-template-columns: 350px 1fr; /* 左固定，右自適應 */
+            /* 修改這裡：左邊拿走剩餘空間 (1fr)，右邊只拿剛好的寬度 (360px) */
+            grid-template-columns: 1fr 360px; 
             height: 95vh;
         }
         
@@ -48,34 +49,36 @@
             gap: 15px;
             overflow-y: auto;
             padding-right: 5px;
+            min-width: 300px; /* 防止縮太小 */
         }
 
         .panel {
             background: #252526;
-            padding: 12px;
+            padding: 15px;
             border-radius: 5px;
             border: 1px solid var(--border-color);
         }
 
-        label { display: block; margin-bottom: 5px; color: #9cdcfe; font-weight: bold; font-size: 0.9em; }
+        label { display: block; margin-bottom: 8px; color: #9cdcfe; font-weight: bold; font-size: 0.95em; }
         
         textarea {
             width: 100%;
             background-color: #111;
             color: var(--highlight-color);
             border: 1px solid var(--border-color);
-            padding: 8px;
+            padding: 10px;
             font-family: inherit;
             box-sizing: border-box;
             resize: vertical;
-            font-size: 13px;
+            font-size: 14px;
+            line-height: 1.4;
         }
 
         input[type="text"], input[type="number"] {
             background: #111;
             border: 1px solid var(--border-color);
             color: white;
-            padding: 5px;
+            padding: 6px;
             font-family: inherit;
         }
 
@@ -83,7 +86,7 @@
             background-color: var(--accent-color);
             color: white;
             border: none;
-            padding: 5px 10px;
+            padding: 6px 12px;
             cursor: pointer;
             font-family: inherit;
             border-radius: 3px;
@@ -91,33 +94,34 @@
         }
         button:hover { background-color: #005f9e; }
         
-        .radio-group { display: flex; gap: 10px; margin-bottom: 5px; font-size: 0.9em; }
+        .radio-group { display: flex; gap: 15px; margin-bottom: 5px; font-size: 0.9em; }
         
-        /* Parsing Table */
-        .parsed-table { width: 100%; border-collapse: collapse; font-size: 0.85em; margin-top: 8px; }
-        .parsed-table th { text-align: left; color: #9cdcfe; border-bottom: 1px solid #555; padding: 4px; }
-        .parsed-table td { padding: 4px; border-bottom: 1px solid #333; }
-        .p-name { color: var(--success-color); }
+        /* Parsing Table (Left Side) */
+        .parsed-table { width: 100%; border-collapse: collapse; font-size: 0.9em; margin-top: 10px; }
+        .parsed-table th { text-align: left; color: #9cdcfe; border-bottom: 1px solid #555; padding: 6px; }
+        .parsed-table td { padding: 6px; border-bottom: 1px solid #333; }
+        .p-name { color: var(--success-color); width: 30%; }
+        .p-range { color: #888; width: 25%; font-size: 0.9em; }
         .p-val { color: var(--highlight-color); }
 
-        /* --- Right Panel (Table) --- */
+        /* --- Right Panel (Main Table) --- */
         .table-wrapper {
             border: 1px solid var(--border-color);
             overflow-y: auto;
             background: #1e1e1e;
-            position: relative;
+            /* 讓右邊寬度剛好 */
+            width: 100%; 
         }
         
         table.main-table {
-            width: auto; /* 關鍵：不強制撐滿 */
-            min-width: 320px; 
+            width: 100%;
             border-collapse: collapse;
-            font-size: 13px; /* 字體稍微縮小 */
+            font-size: 13px;
         }
 
         table.main-table th {
-            text-align: center; /* 標題置中 */
-            padding: 6px 10px;
+            text-align: center;
+            padding: 8px 5px;
             background-color: #333;
             color: #9cdcfe;
             position: sticky;
@@ -127,16 +131,16 @@
         }
         
         table.main-table td {
-            padding: 3px 10px; /* 縮小行距 */
+            padding: 4px 5px;
             border-bottom: 1px solid #2a2a2a;
             border-right: 1px solid #2a2a2a;
-            white-space: nowrap; /* 防止換行 */
+            white-space: nowrap;
         }
 
-        /* 調整欄位寬度與對齊 */
-        .idx-col { width: 80px; color: #569cd6; text-align: right; border-right: 2px solid #444 !important; }
-        .bin-col { width: 160px; letter-spacing: 1px; font-family: 'Consolas'; color: #888; text-align: center; }
-        .hex-col { width: 60px; color: var(--highlight-color); text-align: center; }
+        /* Fixed Column Widths for Right Panel */
+        .idx-col { width: 70px; color: #569cd6; text-align: right; border-right: 2px solid #444 !important; }
+        .bin-col { width: 140px; letter-spacing: 1px; font-family: 'Consolas'; color: #888; text-align: center; }
+        .hex-col { width: 50px; color: var(--highlight-color); text-align: center; }
         
         .bit-1 { color: #b5cea8; font-weight: bold; background: rgba(181, 206, 168, 0.1); }
         .bit-0 { color: #505050; }
@@ -154,56 +158,59 @@
             
             <div class="panel">
                 <h3>1. Source Hex</h3>
-                <textarea id="hexInput" style="height: 60px;">00000000000000000000000032CF6CC100000000000000000000000000000009E610329FF0004000D620014DD</textarea>
+                <textarea id="hexInput" style="height: 70px;">00000000000000000000000032CF6CC100000000000000000000000000000009E610329FF0004000D620014DD</textarea>
                 <div id="errorMsg" class="error">Invalid Hex String</div>
 
-                <div style="margin-top: 10px; display: flex; gap: 5px; align-items: center;">
-                    <button onclick="performShift('left')"> << </button>
-                    <input type="number" id="shiftAmount" value="1" min="0" style="width: 40px; text-align: center;">
-                    <button onclick="performShift('right')"> >> </button>
+                <div style="margin-top: 10px; display: flex; gap: 10px; align-items: center;">
+                    <button onclick="performShift('left')"> << Shift Left </button>
+                    <input type="number" id="shiftAmount" value="1" min="0" style="width: 50px; text-align: center;">
+                    <button onclick="performShift('right')"> Shift Right >> </button>
                 </div>
             </div>
 
             <div class="panel">
                 <h3>2. Range Extractor</h3>
-                <div style="display: flex; gap: 5px;">
-                    <input type="text" id="rangeInput" placeholder="e.g. 39:28" style="width: 100%;">
-                </div>
-                <div id="extractorResult" style="margin-top: 10px; display: none; font-size: 0.95em;">
-                    <div style="margin-bottom: 2px;">Hex: <span id="resHex" style="color: var(--success-color); font-weight: bold;"></span></div>
-                    <div>Dec: <span id="resDec" style="color: var(--text-color);"></span></div>
+                <div style="display: flex; gap: 10px; align-items: center;">
+                    <input type="text" id="rangeInput" placeholder="e.g. 39:28" style="width: 200px;">
+                    
+                    <div id="extractorResult" style="display: none; margin-left: 10px;">
+                        <span style="color: #888;">Hex:</span> <span id="resHex" style="color: var(--success-color); font-weight: bold; margin-right: 15px;"></span>
+                        <span style="color: #888;">Dec:</span> <span id="resDec" style="color: white;"></span>
+                    </div>
                 </div>
             </div>
 
-            <div class="panel" style="border-left: 3px solid var(--field-color);">
+            <div class="panel" style="border-left: 4px solid var(--field-color); flex-grow: 1; display: flex; flex-direction: column;">
                 <h3>3. Struct / Packet Parser</h3>
-                <label>Fields (Name Width):</label>
-                <textarea id="fieldDefInput" style="height: 80px;" placeholder="Ver 4, Header 8, Type 4&#10;Data 16">a 5, b 3, c 6</textarea>
+                <label>Fields Definition (Name Width):</label>
+                <textarea id="fieldDefInput" style="height: 100px;" placeholder="Ver 4, Header 8, Type 4&#10;Data 16">a 5, b 3, c 6</textarea>
                 
                 <div style="margin-top: 10px;">
                     <div class="radio-group">
-                        <label>Dir:</label>
+                        <label>Direction:</label>
                         <div style="display:flex; align-items:center;">
                             <input type="radio" name="pDir" id="dirMSB" value="MSB" checked onclick="parseFields()">
-                            <label for="dirMSB" style="font-weight: normal; margin-left:2px;">MSB First</label>
+                            <label for="dirMSB" style="font-weight: normal; margin-left:4px; cursor:pointer;">MSB First (Packet)</label>
                         </div>
                         <div style="display:flex; align-items:center;">
                             <input type="radio" name="pDir" id="dirLSB" value="LSB" onclick="parseFields()">
-                            <label for="dirLSB" style="font-weight: normal; margin-left:2px;">LSB First</label>
+                            <label for="dirLSB" style="font-weight: normal; margin-left:4px; cursor:pointer;">LSB First (Register)</label>
                         </div>
                     </div>
                 </div>
 
-                <table class="parsed-table">
-                    <thead>
-                        <tr>
-                            <th>Field</th>
-                            <th>Range</th>
-                            <th>Value</th>
-                        </tr>
-                    </thead>
-                    <tbody id="parsedBody"></tbody>
-                </table>
+                <div style="overflow-y: auto; margin-top: 10px; border-top: 1px solid #444;">
+                    <table class="parsed-table">
+                        <thead>
+                            <tr>
+                                <th>Field Name</th>
+                                <th>Bit Range</th>
+                                <th>Value</th>
+                            </tr>
+                        </thead>
+                        <tbody id="parsedBody"></tbody>
+                    </table>
+                </div>
             </div>
 
         </div>
@@ -233,15 +240,12 @@
         const parsedBody = document.getElementById('parsedBody');
         const errorMsg = document.getElementById('errorMsg');
         
-        // Extractor Elements
         const extractorResult = document.getElementById('extractorResult');
         const resHex = document.getElementById('resHex');
         const resDec = document.getElementById('resDec');
 
-        // Init
         updateAll();
 
-        // Listeners
         hexInput.addEventListener('input', updateAll);
         rangeInput.addEventListener('input', calculateRange);
         fieldDefInput.addEventListener('input', parseFields);
@@ -270,7 +274,6 @@
             const totalBits = fullBin.length;
             const strStart = totalBits - 1 - start;
             const strEnd = totalBits - end; 
-            
             if (strStart < 0 || strEnd > totalBits || strStart >= strEnd) return null;
             return fullBin.slice(strStart, strEnd);
         }
@@ -401,7 +404,7 @@
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
                     <td class="p-name">${name}</td>
-                    <td style="font-size:0.85em; color:#888;">[${startBit}:${endBit}]</td>
+                    <td class="p-range">[${startBit}:${endBit}]</td>
                     <td class="p-val">${valHex}</td>
                 `;
                 parsedBody.appendChild(tr);
