@@ -3,17 +3,18 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hex to Bits Converter & Extractor</title>
+    <title>Hex Analyzer & Field Parser</title>
     <style>
         :root {
             --bg-color: #1e1e1e;
             --text-color: #d4d4d4;
             --accent-color: #007acc;
             --border-color: #333;
-            --table-header-bg: #2d2d2d;
+            --table-header-bg: #252526;
             --table-row-hover: #2a2d2e;
             --highlight-color: #ce9178; 
             --success-color: #4ec9b0;
+            --field-color: #9cdcfe;
         }
 
         body {
@@ -25,46 +26,46 @@
             font-size: 14px;
         }
 
-        h2, h3 { border-bottom: 1px solid var(--border-color); padding-bottom: 10px; margin-top: 0; }
+        h2, h3 { border-bottom: 1px solid var(--border-color); padding-bottom: 10px; margin-top: 0; font-size: 1.2em; }
 
         .container {
             display: grid;
             gap: 20px;
-            grid-template-columns: 2fr 1fr; /* 分左右兩欄 */
+            grid-template-columns: 350px 1fr; /* 左側控制面板固定寬度 */
+            height: 95vh;
         }
         
         @media (max-width: 900px) {
-            .container { grid-template-columns: 1fr; }
+            .container { grid-template-columns: 1fr; height: auto; }
+        }
+
+        .left-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            overflow-y: auto;
+            padding-right: 5px;
         }
 
         .panel {
-            background: var(--table-header-bg);
+            background: #252526;
             padding: 15px;
             border-radius: 5px;
             border: 1px solid var(--border-color);
         }
 
-        label { display: block; margin-bottom: 5px; color: #9cdcfe; }
+        label { display: block; margin-bottom: 5px; color: #9cdcfe; font-weight: bold; }
         
         textarea {
             width: 100%;
-            height: 80px;
             background-color: #111;
             color: var(--highlight-color);
             border: 1px solid var(--border-color);
-            padding: 10px;
+            padding: 8px;
             font-family: inherit;
             box-sizing: border-box;
             resize: vertical;
-            font-size: 1.1em;
-        }
-
-        .controls-row {
-            margin-top: 15px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            flex-wrap: wrap;
+            font-size: 13px;
         }
 
         input[type="text"], input[type="number"] {
@@ -72,7 +73,6 @@
             border: 1px solid var(--border-color);
             color: white;
             padding: 6px;
-            text-align: center;
             font-family: inherit;
         }
 
@@ -80,113 +80,131 @@
             background-color: var(--accent-color);
             color: white;
             border: none;
-            padding: 6px 15px;
+            padding: 6px 12px;
             cursor: pointer;
             font-family: inherit;
-            transition: background 0.2s;
+            border-radius: 3px;
         }
-
         button:hover { background-color: #005f9e; }
         
-        /* Extractor Styles */
-        .extractor-result {
-            margin-top: 15px;
-            background: #111;
-            padding: 10px;
-            border: 1px solid var(--border-color);
-        }
-        .result-row {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 5px;
-            border-bottom: 1px dashed #333;
-            padding-bottom: 5px;
-        }
-        .result-row:last-child { border-bottom: none; }
-        .res-label { color: #888; }
-        .res-value { color: var(--success-color); font-weight: bold; font-size: 1.1em; }
+        .radio-group { display: flex; gap: 10px; margin-bottom: 10px; font-size: 0.9em; }
+        .radio-group label { display: inline; color: var(--text-color); font-weight: normal; }
 
-        /* Table Styling */
-        table {
+        /* Parsing Table */
+        .parsed-table {
             width: 100%;
             border-collapse: collapse;
-            margin-top: 0;
+            font-size: 0.9em;
+            margin-top: 10px;
+        }
+        .parsed-table th { text-align: left; color: #9cdcfe; border-bottom: 1px solid #555; padding: 4px; }
+        .parsed-table td { padding: 4px; border-bottom: 1px solid #333; }
+        .p-name { color: var(--success-color); }
+        .p-val { color: var(--highlight-color); }
+
+        /* Main Bit Table */
+        .table-wrapper {
             border: 1px solid var(--border-color);
+            overflow-y: auto;
+            background: #1e1e1e;
+        }
+        
+        table.main-table {
+            width: 100%;
+            border-collapse: collapse;
         }
 
-        th, td {
+        table.main-table th {
             text-align: left;
             padding: 8px;
-            border-bottom: 1px solid var(--border-color);
-            border-right: 1px solid var(--border-color);
+            background-color: #333;
+            color: #9cdcfe;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+        
+        table.main-table td {
+            padding: 5px 8px;
+            border-bottom: 1px solid #333;
+            border-right: 1px solid #333;
         }
 
-        th { background-color: #333; color: #9cdcfe; position: sticky; top: 0; }
-        tr:hover { background-color: var(--table-row-hover); }
-
-        .idx-col { width: 100px; color: #569cd6; text-align: right; }
-        .hex-col { width: 80px; color: var(--highlight-color); }
-        .bin-col { letter-spacing: 2px; font-family: 'Consolas'; }
+        .idx-col { width: 90px; color: #569cd6; text-align: right; }
+        .hex-col { width: 60px; color: var(--highlight-color); }
+        .bin-col { letter-spacing: 1px; font-family: 'Consolas'; color: #888; }
         
         .bit-1 { color: #b5cea8; font-weight: bold; }
         .bit-0 { color: #505050; }
 
-        .error { color: #f48771; margin-top: 5px; display: none; }
-        
-        /* Scrollable Table Area */
-        .table-wrapper {
-            max-height: 80vh;
-            overflow-y: auto;
-            border: 1px solid var(--border-color);
-        }
+        .error { color: #f48771; margin-top: 5px; display: none; font-size: 0.9em; }
     </style>
 </head>
 <body>
 
     <div class="container">
         
-        <div style="display: flex; flex-direction: column; gap: 20px;">
+        <div class="left-panel">
             
             <div class="panel">
-                <h3>1. Source Data</h3>
-                <label for="hexInput">Hex String:</label>
-                <textarea id="hexInput">00000000000000000000000032CF6CC100000000000000000000000000000009E610329FF0004000D620014DD</textarea>
+                <h3>1. Source Hex</h3>
+                <textarea id="hexInput" style="height: 60px;">00000000000000000000000032CF6CC100000000000000000000000000000009E610329FF0004000D620014DD</textarea>
                 <div id="errorMsg" class="error">Invalid Hex String</div>
 
-                <div class="controls-row">
-                    <label>Shift:</label>
-                    <input type="number" id="shiftAmount" value="1" min="0" style="width: 50px;">
+                <div style="margin-top: 10px; display: flex; gap: 5px; align-items: center;">
                     <button onclick="performShift('left')"> << </button>
+                    <input type="number" id="shiftAmount" value="1" min="0" style="width: 40px; text-align: center;">
                     <button onclick="performShift('right')"> >> </button>
                 </div>
             </div>
 
-            <div class="panel" style="border-top: 3px solid var(--success-color);">
+            <div class="panel">
                 <h3>2. Range Extractor</h3>
-                <label for="rangeInput">Bit Range (e.g. 39:28):</label>
-                <div style="display: flex; gap: 10px;">
-                    <input type="text" id="rangeInput" placeholder="High:Low" style="flex-grow: 1;">
+                <div style="display: flex; gap: 5px;">
+                    <input type="text" id="rangeInput" placeholder="e.g. 39:28" style="width: 100%;">
                 </div>
-
-                <div class="extractor-result" id="extractorResult" style="display: none;">
-                    <div class="result-row">
-                        <span class="res-label">Hex:</span>
-                        <span class="res-value" id="resHex">0x0</span>
-                    </div>
-                    <div class="result-row">
-                        <span class="res-label">Decimal:</span>
-                        <span class="res-value" id="resDec">0</span>
-                    </div>
-                     <div class="result-row">
-                        <span class="res-label">Bits:</span>
-                        <span class="res-value" id="resBits" style="font-size: 0.9em; word-break: break-all;">0</span>
-                    </div>
+                <div id="extractorResult" style="margin-top: 10px; display: none;">
+                    <span style="color: #888;">Value: </span>
+                    <span id="resHex" style="color: var(--success-color); font-weight: bold;"></span>
+                    <span id="resDec" style="margin-left: 10px;"></span>
                 </div>
             </div>
+
+            <div class="panel" style="border-left: 3px solid var(--field-color);">
+                <h3>3. Struct / Packet Parser</h3>
+                <label>Fields (Name Width):</label>
+                <textarea id="fieldDefInput" style="height: 80px;" placeholder="Ver 4, Header 8, Type 4&#10;Data 16">a 5, b 3, c 6</textarea>
+                
+                <div style="margin-top: 10px;">
+                    <div class="radio-group">
+                        <label>Parse Direction:</label>
+                        <div>
+                            <input type="radio" name="pDir" id="dirMSB" value="MSB" checked onclick="parseFields()">
+                            <label for="dirMSB" title="Left to Right (Packet Style)">MSB First</label>
+                        </div>
+                        <div>
+                            <input type="radio" name="pDir" id="dirLSB" value="LSB" onclick="parseFields()">
+                            <label for="dirLSB" title="Right to Left (Register Style)">LSB First</label>
+                        </div>
+                    </div>
+                </div>
+
+                <table class="parsed-table">
+                    <thead>
+                        <tr>
+                            <th>Field</th>
+                            <th>Range</th>
+                            <th>Value (Hex)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="parsedBody"></tbody>
+                </table>
+            </div>
+
         </div>
 
         <div class="table-wrapper">
-            <table id="resultTable">
+            <table class="main-table">
                 <thead>
                     <tr>
                         <th class="idx-col">Index</th>
@@ -204,28 +222,32 @@
         const hexInput = document.getElementById('hexInput');
         const shiftAmountInput = document.getElementById('shiftAmount');
         const rangeInput = document.getElementById('rangeInput');
+        const fieldDefInput = document.getElementById('fieldDefInput');
+        
         const tableBody = document.getElementById('tableBody');
+        const parsedBody = document.getElementById('parsedBody');
         const errorMsg = document.getElementById('errorMsg');
         
         // Extractor Elements
         const extractorResult = document.getElementById('extractorResult');
         const resHex = document.getElementById('resHex');
         const resDec = document.getElementById('resDec');
-        const resBits = document.getElementById('resBits');
 
-        // 初始化
+        // Init
         updateAll();
 
-        // 監聽事件
+        // Listeners
         hexInput.addEventListener('input', updateAll);
         rangeInput.addEventListener('input', calculateRange);
+        fieldDefInput.addEventListener('input', parseFields);
 
         function updateAll() {
-            processInput();
-            calculateRange(); // 資料變更時也要重算 Range
+            processHexView();
+            calculateRange();
+            parseFields();
         }
 
-        // --- Core Logic ---
+        // --- Core Utils ---
 
         function getCleanHex() {
             return hexInput.value.trim().replace(/\s/g, '').replace(/^0x/i, '');
@@ -241,125 +263,163 @@
             return binaryStr;
         }
 
+        function extractBits(fullBin, start, end) {
+            // start is MSB index, end is LSB index
+            const totalBits = fullBin.length;
+            // Map bit index to string index
+            // Bit 0 is at string index (len-1)
+            const strStart = totalBits - 1 - start;
+            const strEnd = totalBits - end; // slice excludes end
+            
+            if (strStart < 0 || strEnd > totalBits || strStart >= strEnd) return null;
+            return fullBin.slice(strStart, strEnd);
+        }
+
+        // --- Logic ---
+
         function performShift(direction) {
             let hexStr = getCleanHex();
             if (!hexStr) return;
-
             try {
                 let bigVal = BigInt('0x' + hexStr);
                 let shift = BigInt(shiftAmountInput.value || 0);
-
                 if (direction === 'left') bigVal = bigVal << shift;
                 else bigVal = bigVal >> shift;
-
-                let newHex = bigVal.toString(16).toUpperCase();
-                // 補偶數位
-                if (newHex.length % 2 !== 0) newHex = '0' + newHex;
                 
+                let newHex = bigVal.toString(16).toUpperCase();
+                if (newHex.length % 2 !== 0) newHex = '0' + newHex;
                 hexInput.value = newHex;
                 updateAll();
-            } catch (e) {
-                showError(true);
-            }
+            } catch (e) { showError(true); }
         }
 
-        function processInput() {
+        function processHexView() {
             let rawHex = getCleanHex();
-            
             if (!/^[0-9A-Fa-f]+$/.test(rawHex)) {
                 if (rawHex.length > 0) showError(true);
                 else tableBody.innerHTML = '';
                 return;
             }
             showError(false);
-            if (rawHex.length % 2 !== 0) rawHex = '0' + rawHex;
-            renderTable(rawHex);
-        }
-
-        function calculateRange() {
-            const rangeStr = rangeInput.value.trim();
-            const rawHex = getCleanHex();
+            if (rawHex.length % 2 !== 0) rawHex = '0' + rawHex; // Even padding
             
-            // 驗證輸入格式
-            if (!rangeStr.includes(':') && !/^\d+$/.test(rangeStr)) {
-                extractorResult.style.display = 'none';
-                return;
-            }
-
-            // 解析 High : Low
-            let high, low;
-            if (rangeStr.includes(':')) {
-                const parts = rangeStr.split(':');
-                high = parseInt(parts[0]);
-                low = parseInt(parts[1]);
-            } else {
-                // 如果只輸入一個數字，視為單個 bit
-                high = parseInt(rangeStr);
-                low = parseInt(rangeStr);
-            }
-
-            if (isNaN(high) || isNaN(low)) return;
-            if (low > high) { [low, high] = [high, low]; } // 自動對調
-
-            // 取得完整的 Binary String
-            const fullBin = hexToBinaryStr(rawHex);
-            if (!fullBin) return;
-
-            const totalBits = fullBin.length;
-            
-            // 計算 Slice 範圍
-            // 字串 index 0 是 MSB (Bit N), index len-1 是 LSB (Bit 0)
-            // Bit Index x 對應 String Index = totalBits - 1 - x
-            const startIdx = totalBits - 1 - high;
-            const endIdx = totalBits - low; // slice 不包含 end，所以不用 -1
-
-            // 邊界檢查
-            if (startIdx < 0 || endIdx > totalBits || startIdx >= endIdx) {
-                resHex.innerText = "Out of Range";
-                resDec.innerText = "-";
-                resBits.innerText = "-";
-                extractorResult.style.display = 'block';
-                return;
-            }
-
-            // 提取 Bits
-            const extractedBits = fullBin.slice(startIdx, endIdx);
-            
-            // 轉換數值
-            const bigVal = BigInt('0b' + extractedBits);
-
-            resHex.innerText = '0x' + bigVal.toString(16).toUpperCase();
-            resDec.innerText = bigVal.toString(10);
-            resBits.innerText = extractedBits;
-            
-            extractorResult.style.display = 'block';
-        }
-
-        function renderTable(hexStr) {
-            tableBody.innerHTML = '';
-            let binaryStr = hexToBinaryStr(hexStr);
+            let binaryStr = hexToBinaryStr(rawHex);
             const totalBits = binaryStr.length;
-            
-            // 每次 render 8 bits
+            tableBody.innerHTML = '';
+
             for (let i = 0; i < totalBits; i += 8) {
                 const chunk = binaryStr.substring(i, i + 8);
-                const chunkStartBitIdx = totalBits - 1 - i;
-                const chunkEndBitIdx = totalBits - (i + chunk.length);
-                
+                const chunkStart = totalBits - 1 - i;
+                const chunkEnd = totalBits - (i + chunk.length);
                 const hexChunk = parseInt(chunk, 2).toString(16).toUpperCase().padStart(2, '0');
-
+                
                 const styledBin = chunk.split('').map(b => 
                     `<span class="${b === '1' ? 'bit-1' : 'bit-0'}">${b}</span>`
                 ).join('');
 
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
-                    <td class="idx-col">[${chunkStartBitIdx}:${chunkEndBitIdx}]</td>
+                    <td class="idx-col">[${chunkStart}:${chunkEnd}]</td>
                     <td class="bin-col">${styledBin}</td>
                     <td class="hex-col">${hexChunk}</td>
                 `;
                 tableBody.appendChild(tr);
             }
+        }
+
+        function calculateRange() {
+            const rangeStr = rangeInput.value.trim();
+            const rawHex = getCleanHex();
+            if (!rangeStr.includes(':') && !/^\d+$/.test(rangeStr)) {
+                extractorResult.style.display = 'none';
+                return;
+            }
+
+            let high, low;
+            if (rangeStr.includes(':')) {
+                const parts = rangeStr.split(':');
+                high = parseInt(parts[0]); low = parseInt(parts[1]);
+            } else {
+                high = parseInt(rangeStr); low = parseInt(rangeStr);
+            }
+            if (isNaN(high) || isNaN(low)) return;
+            if (low > high) [low, high] = [high, low];
+
+            const fullBin = hexToBinaryStr(rawHex);
+            if (!fullBin) return;
+
+            const bits = extractBits(fullBin, high, low);
+            if (bits) {
+                const bigVal = BigInt('0b' + bits);
+                resHex.innerText = '0x' + bigVal.toString(16).toUpperCase();
+                resDec.innerText = '(' + bigVal.toString(10) + ')';
+                extractorResult.style.display = 'block';
+            } else {
+                resHex.innerText = "Range Error";
+                resDec.innerText = "";
+                extractorResult.style.display = 'block';
+            }
+        }
+
+        function parseFields() {
+            parsedBody.innerHTML = '';
+            const defStr = fieldDefInput.value;
+            const rawHex = getCleanHex();
+            const fullBin = hexToBinaryStr(rawHex);
+            if (!fullBin || !defStr.trim()) return;
+
+            const totalBits = fullBin.length;
+            const isMSB = document.getElementById('dirMSB').checked;
+
+            // Normalize delimiters: comma or newline -> space
+            // Split by comma or newline
+            const items = defStr.split(/[\n,]+/).map(s => s.trim()).filter(s => s);
+            
+            let currentOffset = isMSB ? totalBits - 1 : 0;
+
+            items.forEach(item => {
+                // Parse "Name Width" e.g., "a 5"
+                const parts = item.split(/\s+/);
+                if (parts.length < 2) return;
+                
+                // Last part is width, rest is name
+                const width = parseInt(parts[parts.length - 1]);
+                const name = parts.slice(0, parts.length - 1).join(' ');
+                
+                if (isNaN(width)) return;
+
+                let startBit, endBit;
+                
+                if (isMSB) {
+                    // MSB First: Reading down from top
+                    // Range: [current, current - width + 1]
+                    startBit = currentOffset;
+                    endBit = currentOffset - width + 1;
+                    currentOffset -= width;
+                } else {
+                    // LSB First: Reading up from bottom
+                    // Range: [current + width - 1, current]
+                    startBit = currentOffset + width - 1;
+                    endBit = currentOffset;
+                    currentOffset += width;
+                }
+
+                const bits = extractBits(fullBin, startBit, endBit);
+                
+                let valHex = "-", valDec = "";
+                if (bits) {
+                    const bigVal = BigInt('0b' + bits);
+                    valHex = '0x' + bigVal.toString(16).toUpperCase();
+                }
+
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td class="p-name">${name}</td>
+                    <td style="font-size:0.85em; color:#888;">[${startBit}:${endBit}]</td>
+                    <td class="p-val">${valHex}</td>
+                `;
+                parsedBody.appendChild(tr);
+            });
         }
 
         function showError(show) {
