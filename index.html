@@ -34,13 +34,48 @@
         .container {
             display: grid;
             gap: 20px;
+            /* 預設: 左側自適應，右側 380px */
             grid-template-columns: 1fr 380px;
             height: 95vh;
+            /* 加入平滑過渡效果 */
+            transition: grid-template-columns 0.3s ease;
+            position: relative; /* 為了定位 toggle 按鈕 */
+        }
+
+        /* 收合狀態: 右側寬度變為 0 */
+        .container.collapsed {
+            grid-template-columns: 1fr 0px;
+            gap: 0; /* 收合時移除間距 */
         }
 
         @media (max-width: 900px) {
             .container { grid-template-columns: 1fr; height: auto; overflow-y: auto; }
             body { overflow: auto; }
+        }
+
+        /* --- Toggle Button --- */
+        .toggle-btn {
+            position: absolute;
+            top: 0;
+            right: 0;
+            z-index: 100;
+            background: #333;
+            color: #fff;
+            border: 1px solid #555;
+            border-radius: 4px 0 0 4px; /* 左邊圓角 */
+            padding: 5px 10px;
+            cursor: pointer;
+            font-weight: bold;
+            opacity: 0.7;
+            transition: all 0.2s;
+        }
+        .toggle-btn:hover {
+            opacity: 1;
+            background: var(--accent-color);
+        }
+        /* 當收合時，按鈕位置稍微調整一下，或保持在最右邊 */
+        .container.collapsed .toggle-btn {
+            background: var(--accent-color);
         }
 
         /* --- Left Panel --- */
@@ -83,7 +118,7 @@
             font-family: inherit;
         }
 
-        button {
+        button.action-btn {
             background-color: var(--accent-color);
             color: white;
             border: none;
@@ -93,7 +128,7 @@
             border-radius: 3px;
             font-size: 0.9em;
         }
-        button:hover { background-color: #005f9e; }
+        button.action-btn:hover { background-color: #005f9e; }
 
         .radio-group { display: flex; gap: 15px; margin-bottom: 5px; font-size: 0.9em; }
 
@@ -150,6 +185,17 @@
             overflow-y: auto;
             background: #1e1e1e;
             width: 100%;
+            /* 當寬度變為0時，隱藏內容，避免擠壓 */
+            overflow-x: hidden;
+            min-width: 0;
+            opacity: 1;
+            transition: opacity 0.2s;
+        }
+
+        /* 收合時隱藏內容以優化效能 */
+        .container.collapsed .table-wrapper {
+            opacity: 0;
+            pointer-events: none;
         }
 
         table.main-table {
@@ -197,19 +243,21 @@
 </head>
 <body>
 
-    <div class="container">
+    <div class="container" id="mainContainer">
+
+        <button class="toggle-btn" onclick="toggleRightPanel()" id="toggleBtn" title="Toggle Bit View"> Hide Bits &gt;&gt;</button>
 
         <div class="left-panel">
 
             <div class="panel">
                 <h3>1. Source Hex</h3>
-                <textarea id="hexInput" style="height: 70px;"></textarea>
+                <textarea id="hexInput" style="height: 70px;">00000000000000000000000032CF6CC100000000000000000000000000000009E610329FF0004000D620014DD</textarea>
                 <div id="errorMsg" class="error">Invalid Hex String</div>
 
                 <div style="margin-top: 10px; display: flex; gap: 10px; align-items: center;">
-                    <button onclick="performShift('left')"> << Shift Left </button>
+                    <button class="action-btn" onclick="performShift('left')"> << Shift Left </button>
                     <input type="number" id="shiftAmount" value="1" min="0" style="width: 50px; text-align: center;">
-                    <button onclick="performShift('right')"> Shift Right >> </button>
+                    <button class="action-btn" onclick="performShift('right')"> Shift Right >> </button>
                 </div>
             </div>
 
@@ -232,7 +280,13 @@
                     <span id="fieldStats" class="stats-tag">Total Width: 0 bits</span>
                 </div>
 
-                <textarea id="fieldDefInput" style="height: 140px;" placeholder="支援三種格式:&#10;1. Width Name: 13 BCD_L3IF&#10;2. Name Width: Tag 12&#10;3. Spec: Field val[7:0]"></textarea>
+                <textarea id="fieldDefInput" style="height: 140px;" placeholder="支援三種格式:&#10;1. Width Name: 13 BCD_L3IF&#10;2. Name Width: Tag 12&#10;3. Spec: Field val[7:0]">1	VALID
+1	TYPE
+13	BCD_L3IF
+48	MAC_ADDR
+1	BMSK_TYPE
+13	BMSK_BCD_L3IF
+48	BMSK_MAC_ADDR</textarea>
 
                 <div style="margin-top: 10px; display: flex; justify-content: space-between; align-items: center;">
                     <div class="radio-group">
@@ -273,6 +327,8 @@
     </div>
 
     <script>
+        const mainContainer = document.getElementById('mainContainer');
+        const toggleBtn = document.getElementById('toggleBtn');
         const hexInput = document.getElementById('hexInput');
         const shiftAmountInput = document.getElementById('shiftAmount');
         const rangeInput = document.getElementById('rangeInput');
@@ -291,6 +347,18 @@
         hexInput.addEventListener('input', updateAll);
         rangeInput.addEventListener('input', calculateRange);
         fieldDefInput.addEventListener('input', parseFields);
+
+        // --- Toggle Logic ---
+        function toggleRightPanel() {
+            mainContainer.classList.toggle('collapsed');
+            const isCollapsed = mainContainer.classList.contains('collapsed');
+
+            if (isCollapsed) {
+                toggleBtn.innerHTML = '&lt;&lt; Show Bits';
+            } else {
+                toggleBtn.innerHTML = 'Hide Bits &gt;&gt;';
+            }
+        }
 
         function updateAll() {
             processHexView();
@@ -345,6 +413,8 @@
             showError(false);
             if (rawHex.length % 2 !== 0) rawHex = '0' + rawHex;
 
+            // 如果右側被收合，可以選擇不渲染 DOM 提升效能 (可選)
+            // 這裡為了保持展開時能馬上看到，仍然渲染，但 CSS 會隱藏
             let binaryStr = hexToBinaryStr(rawHex);
             const totalBits = binaryStr.length;
             tableBody.innerHTML = '';
@@ -393,7 +463,6 @@
             }
         }
 
-        // --- Universal Parsing Logic ---
         function parseFields() {
             matrixTable.innerHTML = '';
             wayStats.innerText = '';
@@ -406,13 +475,11 @@
 
             let fields = [];
 
-            // 模式 1: Spec 格式 ([MSB:LSB])
             if (defStr.match(/\[\d+:\d+\]/)) {
-                // 自動切換到 LSB First (因為 Spec 格式通常定義了 bit 0)
+                // Spec 格式
                 if(!document.getElementById('dirLSB').checked) {
                      document.getElementById('dirLSB').checked = true;
                 }
-
                 const lines = defStr.split(/\n+/);
                 let tempFields = [];
                 const regex = /^\s*([a-zA-Z0-9_]+)\s+.*?\[(\d+):(\d+)\]/;
@@ -441,33 +508,22 @@
                 });
 
             } else {
-                // 模式 2 & 3: 簡易格式 (Width Name OR Name Width)
-                // 先依分隔符拆解 (支援逗號或換行)
+                // Width Name 或 Name Width
                 const rawItems = defStr.split(/[\n,]+/).map(s => s.trim()).filter(s => s);
-
                 rawItems.forEach(item => {
                     const parts = item.split(/\s+/);
                     if (parts.length < 2) return;
-
                     const firstToken = parts[0];
                     const lastToken = parts[parts.length - 1];
 
-                    // 判斷格式:
-                    // 如果第一個 token 是純數字，視為 "Width Name" (你剛要求的格式)
                     if (/^\d+$/.test(firstToken)) {
                         const width = parseInt(firstToken);
-                        const name = parts.slice(1).join(' '); // 剩下的都是名稱
-                        if (!isNaN(width) && width > 0) {
-                            fields.push({ name, width });
-                        }
-                    }
-                    // 否則，如果最後一個 token 是數字，視為 "Name Width" (舊格式)
-                    else if (/^\d+$/.test(lastToken)) {
+                        const name = parts.slice(1).join(' ');
+                        if (!isNaN(width) && width > 0) fields.push({ name, width });
+                    } else if (/^\d+$/.test(lastToken)) {
                         const width = parseInt(lastToken);
                         const name = parts.slice(0, parts.length - 1).join(' ');
-                        if (!isNaN(width) && width > 0) {
-                            fields.push({ name, width });
-                        }
+                        if (!isNaN(width) && width > 0) fields.push({ name, width });
                     }
                 });
             }
@@ -477,23 +533,14 @@
 
             if (fields.length === 0 || !fullBin) return;
 
-            // Render Logic
             const totalBits = fullBin.length;
             const numWays = Math.floor(totalBits / wayWidth);
             wayStats.innerText = `Ways Found: ${numWays}`;
 
             const isMSB = document.getElementById('dirMSB').checked;
-
-            // 如果是 Spec/LSB 模式，顯示時通常要把定義反過來 (Bit31...Bit0)
-            // 但如果使用者自己輸入 "1 Valid, 1 Type"，通常希望照順序顯示
-            // 這裡做一個簡單判斷：如果是 Spec 模式(有Reserved)，或選擇了 LSB First，反向顯示表頭
-
-            let thead = '<thead><tr><th class="way-col">Way</th>';
-            // 決定顯示順序 (Rendering Order)
-            // MSB First: 照 fields 順序 (第一個 field 是 MSB)
-            // LSB First: 反向 fields 順序 (最後一個 field 是 MSB)
             const renderFields = isMSB ? fields : [...fields].reverse();
 
+            let thead = '<thead><tr><th class="way-col">Way</th>';
             renderFields.forEach(f => {
                 const style = f.isReserved ? 'color:#666; font-style:italic;' : '';
                 thead += `<th><span style="${style}">${f.name}</span> <span style="font-size:0.8em; color:#555">(${f.width})</span></th>`;
