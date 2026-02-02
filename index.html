@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hex Analyzer & Multi-Way Parser</title>
+    <title>Hex Analyzer & Spec Parser</title>
     <style>
         :root {
             --bg-color: #1e1e1e;
@@ -12,10 +12,11 @@
             --border-color: #333;
             --table-header-bg: #252526;
             --table-row-hover: #2a2d2e;
-            --highlight-color: #ce9178; 
+            --highlight-color: #ce9178;
             --success-color: #4ec9b0;
             --field-color: #9cdcfe;
             --way-idx-color: #569cd6;
+            --reserved-color: #606060;
         }
 
         body {
@@ -33,10 +34,10 @@
         .container {
             display: grid;
             gap: 20px;
-            grid-template-columns: 1fr 380px; /* 左側自適應，右側固定 */
+            grid-template-columns: 1fr 380px;
             height: 95vh;
         }
-        
+
         @media (max-width: 900px) {
             .container { grid-template-columns: 1fr; height: auto; overflow-y: auto; }
             body { overflow: auto; }
@@ -60,7 +61,7 @@
         }
 
         label { display: block; margin-bottom: 8px; color: #9cdcfe; font-weight: bold; font-size: 0.95em; }
-        
+
         textarea {
             width: 100%;
             background-color: #111;
@@ -70,7 +71,7 @@
             font-family: inherit;
             box-sizing: border-box;
             resize: vertical;
-            font-size: 14px;
+            font-size: 13px;
             line-height: 1.4;
         }
 
@@ -93,15 +94,15 @@
             font-size: 0.9em;
         }
         button:hover { background-color: #005f9e; }
-        
+
         .radio-group { display: flex; gap: 15px; margin-bottom: 5px; font-size: 0.9em; }
-        
+
         /* --- Parser Matrix Table --- */
         .parser-container {
             overflow: auto;
             margin-top: 10px;
             border-top: 1px solid #444;
-            flex-grow: 1; /* 讓表格佔滿剩餘高度 */
+            flex-grow: 1;
         }
 
         .matrix-table {
@@ -110,7 +111,7 @@
             font-size: 0.9em;
             white-space: nowrap;
         }
-        
+
         .matrix-table th {
             text-align: center;
             color: var(--field-color);
@@ -137,18 +138,20 @@
             left: 0;
             z-index: 6;
         }
-        
+
         .val-hex { color: var(--highlight-color); font-weight: bold; }
         .val-range { display: block; font-size: 0.8em; color: #666; margin-top: 2px; }
+
+        .reserved-field { color: var(--reserved-color); font-style: italic; }
 
         /* --- Right Panel (Main Table) --- */
         .table-wrapper {
             border: 1px solid var(--border-color);
             overflow-y: auto;
             background: #1e1e1e;
-            width: 100%; 
+            width: 100%;
         }
-        
+
         table.main-table {
             width: 100%;
             border-collapse: collapse;
@@ -165,7 +168,7 @@
             z-index: 10;
             border-bottom: 1px solid #555;
         }
-        
+
         table.main-table td {
             padding: 4px 5px;
             border-bottom: 1px solid #2a2a2a;
@@ -176,13 +179,13 @@
         .idx-col { width: 70px; color: #569cd6; text-align: right; border-right: 2px solid #444 !important; }
         .bin-col { width: 140px; letter-spacing: 1px; font-family: 'Consolas'; color: #888; text-align: center; }
         .hex-col { width: 50px; color: var(--highlight-color); text-align: center; }
-        
+
         .bit-1 { color: #b5cea8; font-weight: bold; background: rgba(181, 206, 168, 0.1); }
         .bit-0 { color: #505050; }
 
         tr:hover { background-color: var(--table-row-hover); }
         .error { color: #f48771; margin-top: 5px; display: none; font-size: 0.9em; }
-        
+
         .stats-tag {
             background: #333;
             padding: 2px 6px;
@@ -195,12 +198,12 @@
 <body>
 
     <div class="container">
-        
+
         <div class="left-panel">
-            
+
             <div class="panel">
                 <h3>1. Source Hex</h3>
-                <textarea id="hexInput" style="height: 70px;">00000000000000000000000032CF6CC100000000000000000000000000000009E610329FF0004000D620014DD</textarea>
+                <textarea id="hexInput" style="height: 70px;"></textarea>
                 <div id="errorMsg" class="error">Invalid Hex String</div>
 
                 <div style="margin-top: 10px; display: flex; gap: 10px; align-items: center;">
@@ -222,25 +225,25 @@
             </div>
 
             <div class="panel" style="border-left: 4px solid var(--field-color); flex-grow: 1; display: flex; flex-direction: column;">
-                <h3>3. Multi-Way Struct Parser</h3>
-                
+                <h3>3. Spec / Packet Parser</h3>
+
                 <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 5px;">
-                    <label style="margin-bottom:0;">Fields per Way (Name Width):</label>
+                    <label style="margin-bottom:0;">Field Definitions:</label>
                     <span id="fieldStats" class="stats-tag">Total Width: 0 bits</span>
                 </div>
-                
-                <textarea id="fieldDefInput" style="height: 60px;" placeholder="Valid 1, Tag 12, Data 32">a 5, b 3, c 6</textarea>
-                
+
+                <textarea id="fieldDefInput" style="height: 120px;" placeholder="支援格式 1 (簡單): a 5, b 3&#10;支援格式 2 (Spec): INT_DSCP l3_res[5:0]&#10;INT_ECN l3_res[7:6]"></textarea>
+
                 <div style="margin-top: 10px; display: flex; justify-content: space-between; align-items: center;">
                     <div class="radio-group">
                         <label>Order:</label>
                         <div style="display:flex; align-items:center;">
-                            <input type="radio" name="pDir" id="dirMSB" value="MSB" checked onclick="parseFields()">
-                            <label for="dirMSB" style="font-weight: normal; margin-left:4px; cursor:pointer;" title="Way 0 starts at Top (MSB)">MSB First</label>
+                            <input type="radio" name="pDir" id="dirMSB" value="MSB" onclick="parseFields()">
+                            <label for="dirMSB" style="font-weight: normal; margin-left:4px; cursor:pointer;">MSB First</label>
                         </div>
                         <div style="display:flex; align-items:center;">
-                            <input type="radio" name="pDir" id="dirLSB" value="LSB" onclick="parseFields()">
-                            <label for="dirLSB" style="font-weight: normal; margin-left:4px; cursor:pointer;" title="Way 0 starts at Bottom (Bit 0)">LSB First</label>
+                            <input type="radio" name="pDir" id="dirLSB" value="LSB" checked onclick="parseFields()">
+                            <label for="dirLSB" style="font-weight: normal; margin-left:4px; cursor:pointer;">LSB First</label>
                         </div>
                     </div>
                     <span id="wayStats" style="font-size: 0.85em; color: #888;"></span>
@@ -277,10 +280,8 @@
         const wayStats = document.getElementById('wayStats');
         const fieldStats = document.getElementById('fieldStats');
         const matrixTable = document.getElementById('matrixTable');
-        
         const tableBody = document.getElementById('tableBody');
         const errorMsg = document.getElementById('errorMsg');
-        
         const extractorResult = document.getElementById('extractorResult');
         const resHex = document.getElementById('resHex');
         const resDec = document.getElementById('resDec');
@@ -288,11 +289,8 @@
         // Initial Load
         updateAll();
 
-        // Event Listeners
         hexInput.addEventListener('input', updateAll);
         rangeInput.addEventListener('input', calculateRange);
-        
-        // 關鍵：綁定 input 事件，確保打字時即時更新
         fieldDefInput.addEventListener('input', parseFields);
 
         function updateAll() {
@@ -301,7 +299,6 @@
             parseFields();
         }
 
-        // --- Basic Utils ---
         function getCleanHex() {
             return hexInput.value.trim().replace(/\s/g, '').replace(/^0x/i, '');
         }
@@ -319,12 +316,11 @@
         function extractBits(fullBin, start, end) {
             const totalBits = fullBin.length;
             const strStart = totalBits - 1 - start;
-            const strEnd = totalBits - end; 
+            const strEnd = totalBits - end;
             if (strStart < 0 || strEnd > totalBits || strStart >= strEnd) return null;
             return fullBin.slice(strStart, strEnd);
         }
 
-        // --- Core Logic ---
         function performShift(direction) {
             let hexStr = getCleanHex();
             if (!hexStr) return;
@@ -333,7 +329,6 @@
                 let shift = BigInt(shiftAmountInput.value || 0);
                 if (direction === 'left') bigVal = bigVal << shift;
                 else bigVal = bigVal >> shift;
-                
                 let newHex = bigVal.toString(16).toUpperCase();
                 if (newHex.length % 2 !== 0) newHex = '0' + newHex;
                 hexInput.value = newHex;
@@ -350,7 +345,7 @@
             }
             showError(false);
             if (rawHex.length % 2 !== 0) rawHex = '0' + rawHex;
-            
+
             let binaryStr = hexToBinaryStr(rawHex);
             const totalBits = binaryStr.length;
             tableBody.innerHTML = '';
@@ -360,17 +355,11 @@
                 const chunkStart = totalBits - 1 - i;
                 const chunkEnd = totalBits - (i + chunk.length);
                 const hexChunk = parseInt(chunk, 2).toString(16).toUpperCase().padStart(2, '0');
-                
-                const styledBin = chunk.split('').map(b => 
+                const styledBin = chunk.split('').map(b =>
                     `<span class="${b === '1' ? 'bit-1' : 'bit-0'}">${b}</span>`
                 ).join('');
-
                 const tr = document.createElement('tr');
-                tr.innerHTML = `
-                    <td class="idx-col">[${chunkStart}:${chunkEnd}]</td>
-                    <td class="bin-col">${styledBin}</td>
-                    <td class="hex-col">${hexChunk}</td>
-                `;
+                tr.innerHTML = `<td class="idx-col">[${chunkStart}:${chunkEnd}]</td><td class="bin-col">${styledBin}</td><td class="hex-col">${hexChunk}</td>`;
                 tableBody.appendChild(tr);
             }
         }
@@ -382,7 +371,6 @@
                 extractorResult.style.display = 'none';
                 return;
             }
-
             let high, low;
             if (rangeStr.includes(':')) {
                 const parts = rangeStr.split(':');
@@ -395,7 +383,6 @@
 
             const fullBin = hexToBinaryStr(rawHex);
             if (!fullBin) return;
-
             const bits = extractBits(fullBin, high, low);
             if (bits) {
                 const bigVal = BigInt('0b' + bits);
@@ -407,89 +394,147 @@
             }
         }
 
+        // --- Advanced Parsing Logic ---
         function parseFields() {
-            // 清除舊資料
             matrixTable.innerHTML = '';
             wayStats.innerText = '';
             fieldStats.innerText = 'Total Width: 0 bits';
-            
-            const defStr = fieldDefInput.value;
+
+            let defStr = fieldDefInput.value.trim();
             const rawHex = getCleanHex();
             const fullBin = hexToBinaryStr(rawHex);
-            
-            // 允許空白輸入，但不執行解析
-            if (!defStr.trim()) return;
+            if (!defStr) return;
 
-            const totalBits = fullBin ? fullBin.length : 0;
-            const isMSB = document.getElementById('dirMSB').checked;
+            let fields = [];
+            let isSpecFormat = false;
 
-            // 1. 寬鬆解析 Field Definitions (支援逗號、換行、多空白)
-            // 將所有非文字字元視為分隔符，但保留 Name + Width 的組合
-            // 策略：先用逗號或換行切分，再 trim
-            const rawItems = defStr.split(/[\n,]+/).map(s => s.trim()).filter(s => s);
-            
-            const fields = [];
-            let wayWidth = 0;
-
-            rawItems.forEach(item => {
-                const parts = item.split(/\s+/);
-                if (parts.length < 2) return;
-                
-                // 最後一個是數字，前面是名稱
-                const widthStr = parts[parts.length - 1];
-                const width = parseInt(widthStr);
-                
-                if (!isNaN(width) && width > 0) {
-                    const name = parts.slice(0, parts.length - 1).join(' ');
-                    fields.push({ name, width });
-                    wayWidth += width;
+            // 1. 偵測並解析格式
+            // 檢查是否包含方括號 [] (Spec 格式特徵)
+            if (defStr.match(/\[\d+:\d+\]/)) {
+                isSpecFormat = true;
+                // 自動切換到 LSB First (因為 Spec 格式通常定義了 bit 0)
+                // 只有在第一次檢測到時切換，避免使用者手動切換後被覆蓋，這裡簡單強制一下以符合直覺
+                if(!document.getElementById('dirLSB').checked) {
+                     document.getElementById('dirLSB').checked = true;
                 }
-            });
 
-            // 更新總寬度顯示
+                const lines = defStr.split(/\n+/);
+                let tempFields = [];
+
+                // Regex: 抓取開頭的名稱，忽略中間的變數名，抓取 [MSB:LSB]
+                // 格式: NAME  maybe_var[MSB:LSB]
+                const regex = /^\s*([a-zA-Z0-9_]+)\s+.*?\[(\d+):(\d+)\]/;
+
+                lines.forEach(line => {
+                    const match = line.match(regex);
+                    if (match) {
+                        const name = match[1];
+                        const msb = parseInt(match[2]);
+                        const lsb = parseInt(match[3]);
+                        const width = Math.abs(msb - lsb) + 1;
+                        tempFields.push({ name, width, msb, lsb: Math.min(msb, lsb) });
+                    }
+                });
+
+                // 根據 LSB 排序 (從小到大)
+                tempFields.sort((a, b) => a.lsb - b.lsb);
+
+                // 填補保留位 (Gap Filling)
+                let currentBit = 0;
+                tempFields.forEach(f => {
+                    // 如果欄位起始位大於目前指針，插入 RESERVED
+                    if (f.lsb > currentBit) {
+                        const gap = f.lsb - currentBit;
+                        fields.push({ name: "RESERVED", width: gap, isReserved: true });
+                    }
+                    // 加入正常欄位
+                    fields.push({ name: f.name, width: f.width });
+                    currentBit = f.lsb + f.width;
+                });
+
+            } else {
+                // 舊格式: Name Width, Name Width
+                const rawItems = defStr.split(/[\n,]+/).map(s => s.trim()).filter(s => s);
+                rawItems.forEach(item => {
+                    const parts = item.split(/\s+/);
+                    if (parts.length < 2) return;
+                    const widthStr = parts[parts.length - 1];
+                    const width = parseInt(widthStr);
+                    if (!isNaN(width) && width > 0) {
+                        const name = parts.slice(0, parts.length - 1).join(' ');
+                        fields.push({ name, width });
+                    }
+                });
+            }
+
+            // 計算總寬度
+            let wayWidth = fields.reduce((sum, f) => sum + f.width, 0);
             fieldStats.innerText = `Total Width: ${wayWidth} bits`;
 
             if (fields.length === 0 || !fullBin) return;
 
             // 2. 計算 Ways
+            const totalBits = fullBin.length;
             const numWays = Math.floor(totalBits / wayWidth);
             wayStats.innerText = `Ways Found: ${numWays}`;
 
-            // 3. 建立表頭
+            // 3. 建立 Table
+            const isMSB = document.getElementById('dirMSB').checked;
+
+            // 如果是 Spec 格式且是 LSB First，我们需要把 fields 反轉
+            // 因為 LSB First 的 parse 邏輯是從 wayStart + width 往上加
+            // 而我們的 fields 列表目前是 [Bit0-5, Bit6-7...] (LSB Sorted)
+            // LSB Logic: currentOffset += width.
+            // 若 fields 是 [A(0-5), B(6-7)]
+            // Loop 1 (A): Start = 0+6-1=5, End=0. Correct.
+            // Loop 2 (B): Start = 6+2-1=7, End=6. Correct.
+            // 所以不需要反轉 fields 陣列，順序是對的。
+
             let thead = '<thead><tr><th class="way-col">Way</th>';
-            fields.forEach(f => {
-                thead += `<th>${f.name} <span style="font-size:0.8em; color:#666">(${f.width})</span></th>`;
+            // 顯示表頭時，如果是 MSB First (Packet)，通常習慣左邊是第一個 field
+            // 如果是 LSB First (Register)，習慣右邊是 Bit 0
+            // 這裡我們依照 fields 陣列順序顯示
+
+            // 若是 LSB First 模式，通常習慣把高位元顯示在左邊，低位元顯示在右邊 (如 31...0)
+            // 我們目前的 fields 是 LSB -> MSB (0...N)。
+            // 為了符合 Register 視圖，顯示時我們將 fields 反向渲染表頭與內容
+
+            const renderFields = isMSB ? fields : [...fields].reverse();
+
+            renderFields.forEach(f => {
+                const style = f.isReserved ? 'color:#666; font-style:italic;' : '';
+                thead += `<th><span style="${style}">${f.name}</span> <span style="font-size:0.8em; color:#555">(${f.width})</span></th>`;
             });
             thead += '</tr></thead>';
             matrixTable.innerHTML = thead;
 
-            // 4. 建立內容 (Ways)
             let tbody = document.createElement('tbody');
-            
+
             for (let w = 0; w < numWays; w++) {
                 let rowHtml = `<tr><td class="way-col">#${w}</td>`;
-                
-                let wayStartOffset; 
+
+                let wayStartOffset;
                 if (isMSB) {
-                    // MSB: Way 0 在最上面 (High Bit)
                     wayStartOffset = (totalBits - 1) - (w * wayWidth);
                 } else {
-                    // LSB: Way 0 在最下面 (Low Bit)
                     wayStartOffset = w * wayWidth;
                 }
 
                 let currentOffset = wayStartOffset;
 
+                // 這裡的邏輯必須使用原始順序的 fields 來計算 offset
+                // 只是產生 HTML 字串時依照 renderFields 的順序拼接
+                // 這有點複雜，不如我們先算出所有 values，再依序填入
+
+                let rowValues = []; // 存 {hex, range, isReserved}
+
                 fields.forEach(field => {
                     let startBit, endBit;
-                    
                     if (isMSB) {
-                        // Way 內部也是 MSB -> LSB
                         startBit = currentOffset;
                         endBit = currentOffset - field.width + 1;
                         currentOffset -= field.width;
                     } else {
-                        // Way 內部也是 LSB -> MSB
                         startBit = currentOffset + field.width - 1;
                         endBit = currentOffset;
                         currentOffset += field.width;
@@ -497,16 +542,25 @@
 
                     const bits = extractBits(fullBin, startBit, endBit);
                     let valHex = "-", valRange = `[${startBit}:${endBit}]`;
-                    
                     if (bits) {
                         const bigVal = BigInt('0b' + bits);
                         valHex = '0x' + bigVal.toString(16).toUpperCase();
                     }
+                    rowValues.push({ valHex, valRange, isReserved: field.isReserved });
+                });
 
-                    rowHtml += `<td>
-                        <div class="val-hex">${valHex}</div>
-                        <div class="val-range">${valRange}</div>
-                    </td>`;
+                // 依照顯示順序重排 values
+                if (!isMSB) rowValues.reverse();
+
+                rowValues.forEach(v => {
+                    if (v.isReserved) {
+                        rowHtml += `<td><span class="reserved-field">Rsrv</span></td>`;
+                    } else {
+                        rowHtml += `<td>
+                            <div class="val-hex">${v.valHex}</div>
+                            <div class="val-range">${v.valRange}</div>
+                        </td>`;
+                    }
                 });
 
                 rowHtml += '</tr>';
